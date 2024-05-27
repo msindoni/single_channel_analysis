@@ -178,28 +178,29 @@ def reversal_potential_file(file):
   print('Sigle channel conductance =', round(popt[0]*10**3, 4), 'pS')
 
 def channel_properties(voltage_list, unitary_current_list):
-  data = {'voltage': voltage_list, 'current':unitary_current_list}
-  df = pd.DataFrame(data)
-  popt, pcov = curve_fit(linear_fit, df['voltage'], df['current'])
-  # fitline = np.linspace(df['voltage'].min(), df['voltage'].max(), 400)
-  fitline = np.linspace(df['voltage'].min(), df['voltage'].max(), 10, 400)
+    data = {'voltage': voltage_list, 'current':unitary_current_list}
+    df = pd.DataFrame(data)
+    popt, pcov = curve_fit(linear_fit, df['voltage'], df['current'])
+    fitline = np.linspace(df['voltage'].min(), 0, 100)
 
-  fig, ax=plt.subplots(figsize=(5,3))
-    
-  sns.lineplot(x = fitline, y = linear_fit(fitline, *popt), color = 'black', linestyle='--', ax=ax)
-  sns.scatterplot(x = df['voltage'], y = df['current'], hue=df['voltage'], palette='cool', ax=ax, edgecolor='black')
-  ax.axvline(x=0, color = 'black')
-  ax.axhline(y=0, color = 'black')
-  ax.plot((-popt[1] / popt[0]), 0,  marker="o", markersize=10, color = 'gold')
+    fig, ax=plt.subplots(figsize=(10,6))
 
-  ax.set_xlabel('Voltage (mV)', fontsize = 10)
-  ax.set_ylabel('Current(pA)', fontsize = 10)
-  ax.get_legend().remove()
-  reveral_pot = -popt[1] / popt[0]
-  print('Reversal potential =', round(reveral_pot, 4), 'mV')
-  print('Sigle channel conductance =', round(popt[0]*10**3, 4), 'pS')
+    sns.lineplot(x = fitline, y = linear_fit(fitline, *popt), color = 'black', linestyle='--', ax=ax)
+    sns.scatterplot(x = df['voltage'], y = df['current'], hue=df['voltage'], palette='cool', ax=ax, 
+                    edgecolor='black', s=200)
+    ax.axvline(x=0, color = 'black')
+    ax.axhline(y=0, color = 'black')
+    ax.plot((-popt[1] / popt[0]), 0,  marker="o", markersize=20, color = 'gold')
 
-  return fig
+    ax.set_xlabel('Voltage (mV)', fontsize = 20)
+    ax.set_ylabel('Current(pA)', fontsize = 20)
+    ax.tick_params(axis='both', labelsize=20)
+    ax.get_legend().remove()
+    reveral_pot = -popt[1] / popt[0]
+    print('Reversal potential =', round(reveral_pot, 4), 'mV')
+    print('Sigle channel conductance =', round(popt[0]*10**3, 4), 'pS')
+
+    return fig
 
 ######################################## BOOTCAMP ######################################################################################################################
 def bc_load_dataframe_asc(file):
