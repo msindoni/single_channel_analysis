@@ -17,10 +17,26 @@ import plotly
 ######################################## POST CSV ANALYSIS ######################################################################################################################
 
 def load_dataframe_csv(file):
+  '''Used for ephys data that has been added to a CSV. For the purposes of making this code, this is for ephys data that has already be processed
+  and is more user friendly since it is used as a learning tool. The function just takes the SVA and converts it to a dataframe.
+
+  Inputs:
+  file: CSV file generated from the ascii file containing the electrophysiology recording data.
+
+  Outputs:
+  df: dataframe of the CSV file containing already processed ephys data'''
+
   df = pd.read_csv(file)
   return df
 
 def summary_plots_csv(df):
+  '''Loads all sweep and plots them. This function is specific to the data that is contained in dfs generated from the example CSV file.
+
+  Inputs:
+  df: processed dataframe containing voltage and current data.
+
+  Outputs:
+  fig: an interactive plotly figure that shows voltage sweep and subsequent ephys recording for each'''
 
   #make subplot with one column and enough rows for the pressure step and current for all sweeps
   subplot_titles = ['Voltage Steps']
@@ -210,25 +226,37 @@ def load_dataframe_asc(file):
     return(df)
 
 def summary_plots_asc(df):
+    
+    '''Loads all sweep and plots them. The top plot will show the voltage sweeps and each subsequent sweep show the ephys recordings for each voltage sweep.
+
+    Inputs:
+    df: processed dataframe containing voltage and current data.
+
+    Outputs:
+    fig: an interactive plotly figure that shows voltage sweep and subsequent ephys recording for each'''
 
     #make subplot with one column and enough rows for the pressure step and current for all sweeps
     subplot_titles = ['Voltage Steps']
-    grouped = df.groupby('voltage_id')
+    grouped = df.groupby('sweep')
+
+    #generating a list to label each of the plots that will be generated later
     for name, group in grouped:
         voltage = group['voltage_id'].mode().iloc[0]
         voltage_string = str(voltage) + ' mV'
         subplot_titles.append(voltage_string)
 
+    #generate the plotly figure that data will be added to
     fig = make_subplots(rows = int(df['sweep'].max() + 3), cols=1, subplot_titles=subplot_titles)
 
   #go through each sweep and plot the current
     for name, group in df.groupby('sweep'):
         group=group.loc[group['ti'].between(100, 10000)]
-        fig.add_trace(go.Scatter(mode='lines', name=name, x = group['ti'], y = group['voltages'], marker=dict(color='maroon'), connectgaps=False), row = 1, col = 1)
+        fig.add_trace(go.Scatter(mode='lines', name=name, x = group['ti'], y = group['voltages'], marker=dict(color='maroon'), connectgaps=False), row = 1, col = 1) #adds voltage to voltage plot
         fig.update_yaxes(title_text= 'Voltage (mV)', row=1, col=1)
-        fig.add_trace(go.Scatter(mode='lines', name=name, x = group['ti'], y=group['i'],  marker=dict(color='black')), row= name + 2, col=1)          
+        fig.add_trace(go.Scatter(mode='lines', name=name, x = group['ti'], y=group['i'],  marker=dict(color='black')), row= name + 2, col=1) #adds ephys data to a new plot
         fig.update_yaxes(title_text= 'Current (pA)', row=name + 2, col=1)
-
+    
+    #figure parameters
     fig.update_layout(
     autosize=True,
     width=1000,
