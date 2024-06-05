@@ -17,6 +17,7 @@ import plotly
 ######################################## POST CSV ANALYSIS ######################################################################################################################
 
 def load_dataframe_csv(file):
+  
   '''Used for ephys data that has been added to a CSV. For the purposes of making this code, this is for ephys data that has already be processed
   and is more user friendly since it is used as a learning tool. The function just takes the SVA and converts it to a dataframe.
 
@@ -30,6 +31,7 @@ def load_dataframe_csv(file):
   return df
 
 def summary_plots_csv(df):
+  
   '''Loads all sweep and plots them. This function is specific to the data that is contained in dfs generated from the example CSV file.
 
   Inputs:
@@ -70,6 +72,16 @@ def summary_plots_csv(df):
   return fig
 
 def basic_current_histo(df_cut, bins):
+
+  '''Generates a histogram of the isolated ephys data determined manually with the plotly plot.
+
+  Inputs:
+  df_cut: slice of the original dataframe the contains the data manually isolated form the plotly plot.
+  bins: number of bins in the histogram.
+
+  Outputs:
+  fig: histograms of the currents for the isolated ephys data.'''
+
   fig = plt.hist(df_cut['i'], bins = bins, align= 'mid', edgecolor = 'black', color = 'white')
   plt.xlabel('current (pA)', fontsize = 15)
   plt.ylabel('Count', fontsize = 15)
@@ -77,6 +89,19 @@ def basic_current_histo(df_cut, bins):
   return fig
 
 def isolate_openings(df, voltage, start_t, end_t):
+
+  '''Slices the original dataframe to contain the data you manually determined from the plotly plot. The data will be used to generate 
+  a histogram of the currents recorded for a single chanel opening event.
+
+  Inputs:
+  df: the original dataframe containing all ephys data from the entire protocol.
+  voltage: the voltage of the single channel opening you want to isolate.
+  start_t: the start time of the single channel opening you want to isolate.
+  end_t: the end time of the single channel opening you want to isolate.
+
+  Outputs:
+  isolated_data: dataframe containing only the ephys data for the single channel event you want isolated'''
+
   isolated_data = df.loc[(df['voltages'] == voltage) & (df['ti'].between(start_t, end_t))]
   sns.lineplot(x = 'ti', y = 'i', data = isolated_data, color = 'black')
   plt.xlabel('Time (ms)', fontsize = 15)
@@ -85,26 +110,69 @@ def isolate_openings(df, voltage, start_t, end_t):
   return isolated_data
 
 def _1gaussian(x, amp1,cen1,sigma1):
-    return amp1*(1/(sigma1*(np.sqrt(2*np.pi))))*(np.exp((-1.0/2.0)*(((x-cen1)/sigma1)**2)))
+    
+  '''Formula for determining a single gaussian.
+
+  Inputs:
+  x: the input variable (x axis).
+  amp1: the amplitude of the fit.
+  cen1: the median of the fit
+  sigma1: the standard deviation of the fit.
+
+  Outputs:
+  returns the y value for eaxh x that is passed through'''
+
+  return amp1*(1/(sigma1*(np.sqrt(2*np.pi))))*(np.exp((-1.0/2.0)*(((x-cen1)/sigma1)**2)))
 
 def _2gaussian(x, amp1,cen1,sigma1, amp2,cen2,sigma2):
-    return amp1*(1/(sigma1*(np.sqrt(2*np.pi))))*(np.exp((-1.0/2.0)*(((x-cen1)/sigma1)**2))) + \
-            amp2*(1/(sigma2*(np.sqrt(2*np.pi))))*(np.exp((-1.0/2.0)*(((x-cen2)/sigma2)**2)))
+  
+  '''Formula for determining a double gaussian.
+
+  Inputs:
+  x: the input variable (x axis).
+  amp1: the amplitude of the first gaussian..
+  cen1: the median of the first gaussian.
+  sigma1: the standard deviation of the first gaussian.
+  amp2: the amplitude of second gaussian.
+  cen2: the median of the second gaussian.
+  sigma2: the standard deviation of the second gaussian.
+
+  Outputs:
+  returns the y value for eaxh x that is passed through'''
+
+  return amp1*(1/(sigma1*(np.sqrt(2*np.pi))))*(np.exp((-1.0/2.0)*(((x-cen1)/sigma1)**2))) + \
+          amp2*(1/(sigma2*(np.sqrt(2*np.pi))))*(np.exp((-1.0/2.0)*(((x-cen2)/sigma2)**2)))
 
 def double_fit_plot(current_histogram, df_cut, fit_guesses, bins):
-  xdata = current_histogram[1]
-  xdata = xdata[1:]
-  ydata = current_histogram[0]
 
+  '''Plots histogram of the ephys data overlapped by a double gaussian fit.
+
+  Inputs:
+  current_histogram: histogram contining the ephys data for one single channel opening event.
+  df_cut: slice of the original dataframe the contains the data manually isolated form the plotly plot.  cen1: the median of the first gaussian.
+  fit_guesses: guesses for the parameters of each gaussian fit.
+  bins: number of bins in the histogram.  
+
+  Outputs:
+  fig: figure of the historgam of the ephys data from a single channel opening event and and double gaussian fit overlapped
+  pars_1[1]: the senter vale of the first fit (used for leak subtraction to get single channel current).
+  pars_2[1]: the senter vale of the second fit (used for leak subtraction to get single channel current)'''
+
+
+  xdata = current_histogram[1] # the x values for the histograme
+  xdata = xdata[1:] #removing the first value since the x values have a start and end value (so there is one more x than y)
+  ydata = current_histogram[0] # the  values for the histograme
+
+  #fitting the data with a double gaussian
   popt_2gauss, pcov_2gauss = curve_fit(_2gaussian, xdata, ydata, p0 = fit_guesses)
   pars_1 = popt_2gauss[0:3]
   pars_2 = popt_2gauss[3:6]
   
+  #generating data based on gaussian fit
   fitline1 = np.linspace(min(xdata), max(xdata), 400)
   fitline2 = np.linspace(min(xdata), max(xdata), 400)
 
-
-
+  #generating a figure to show the histogram of ephys data overlayed with double gaussian fits
   fig = plt.figure()
   plt.hist(df_cut['i'], bins = bins, align= 'mid', edgecolor = 'black', color = 'white', zorder = 1)
   plt.fill_between(fitline1, _1gaussian(fitline1, *pars_1), color = 'yellow', alpha = 0.6,  zorder = 2)
@@ -112,6 +180,7 @@ def double_fit_plot(current_histogram, df_cut, fit_guesses, bins):
   plt.xlabel('current (pA)', fontsize = 15)
   plt.ylabel('Count', fontsize = 15)
 
+  #determining the single channel current (difference between the center value of each fit)
   if  pars_1[1] > pars_2[1]:
     print('Unitary current =', pars_2[1] - pars_1[1])
   if  pars_1[1] < pars_2[1]:
@@ -120,48 +189,54 @@ def double_fit_plot(current_histogram, df_cut, fit_guesses, bins):
   return fig, pars_1[1], pars_2[1]
 
 def linear_fit(x, a, b):
-    y = (a * x) + b
-    return y
+  
+  '''Liner fit used for determining single channel conductance and reversal potential.
 
-def reversal_potential_file(file):
-  df = pd.read_csv(file)
+  Inputs:
+  x: the input variable (x axis).
+  a: slope of the fit (single-channel conductance)
+  b: y intercep of the fit.
+
+  Outputs:
+  returns the y value for eaxh x that is passed through'''
+  
+  y = (a * x) + b
+  return y
+
+def channel_properties(voltage_list, unitary_current_list):
+
+  '''Plots an I/V curve from the data generaated from single channel openings.
+
+  Inputs:
+  voltage_list: list of voltages that each single channel currents was determined at.
+  unitary_current_list: list of single channel surrents for single channel opening events
+
+  Outputs:
+  fig: figure showing the sindividually calculated single channel currents, a linear fit (slope being single channel conductance), and x intercept (reversal potential)'''   
+
+  data = {'voltage': voltage_list, 'current':unitary_current_list}
+  df = pd.DataFrame(data)
   popt, pcov = curve_fit(linear_fit, df['voltage'], df['current'])
+  fitline = np.linspace(df['voltage'].min(), 0, 100)
 
-  fitline = np.linspace(df['voltage'].min(), df['voltage'].max(), 400)
-  sns.lineplot(x = fitline, y = linear_fit(fitline, *popt), color = 'red')
-  sns.scatterplot(x = df['voltage'], y = df['current'], color = 'midnightblue', )
-  plt.axvline(x=0, color = 'black')
-  plt.axhline(y=0, color = 'black')
-  plt.plot((-popt[1] / popt[0]), 0,  marker="o", markersize=20, color = 'gold')
-  plt.ylim()
+  fig, ax=plt.subplots(figsize=(10,6))
+
+  sns.lineplot(x = fitline, y = linear_fit(fitline, *popt), color = 'black', linestyle='--', ax=ax)
+  sns.scatterplot(x = df['voltage'], y = df['current'], hue=df['voltage'], palette='cool', ax=ax, 
+                  edgecolor='black', s=200)
+  ax.axvline(x=0, color = 'black')
+  ax.axhline(y=0, color = 'black')
+  ax.plot((-popt[1] / popt[0]), 0,  marker="o", markersize=20, color = 'gold')
+
+  ax.set_xlabel('Voltage (mV)', fontsize = 20)
+  ax.set_ylabel('Current(pA)', fontsize = 20)
+  ax.tick_params(axis='both', labelsize=20)
+  ax.get_legend().remove()
   reveral_pot = -popt[1] / popt[0]
   print('Reversal potential =', round(reveral_pot, 4), 'mV')
   print('Sigle channel conductance =', round(popt[0]*10**3, 4), 'pS')
 
-def channel_properties(voltage_list, unitary_current_list):
-    data = {'voltage': voltage_list, 'current':unitary_current_list}
-    df = pd.DataFrame(data)
-    popt, pcov = curve_fit(linear_fit, df['voltage'], df['current'])
-    fitline = np.linspace(df['voltage'].min(), 0, 100)
-
-    fig, ax=plt.subplots(figsize=(10,6))
-
-    sns.lineplot(x = fitline, y = linear_fit(fitline, *popt), color = 'black', linestyle='--', ax=ax)
-    sns.scatterplot(x = df['voltage'], y = df['current'], hue=df['voltage'], palette='cool', ax=ax, 
-                    edgecolor='black', s=200)
-    ax.axvline(x=0, color = 'black')
-    ax.axhline(y=0, color = 'black')
-    ax.plot((-popt[1] / popt[0]), 0,  marker="o", markersize=20, color = 'gold')
-
-    ax.set_xlabel('Voltage (mV)', fontsize = 20)
-    ax.set_ylabel('Current(pA)', fontsize = 20)
-    ax.tick_params(axis='both', labelsize=20)
-    ax.get_legend().remove()
-    reveral_pot = -popt[1] / popt[0]
-    print('Reversal potential =', round(reveral_pot, 4), 'mV')
-    print('Sigle channel conductance =', round(popt[0]*10**3, 4), 'pS')
-
-    return fig
+  return fig
 
 ######################################## ASC FILE PROCESSING ######################################################################################################################
 def load_dataframe_asc(file):
